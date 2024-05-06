@@ -8,7 +8,7 @@ FPS = 60
 ENEMY_SPAWN_RATE = 50
 
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-pygame.display.set_caption('Игра')
+pygame.display.set_caption('Великий Рус против ящеров')
 clock = pygame.time.Clock()
 
 WHITE = (255, 255, 255)
@@ -19,8 +19,8 @@ BLUE = (0, 0, 255)
 class Player(pygame.sprite.Sprite):
     def __init__(self):
         super().__init__()
-        self.image = pygame.Surface((50, 50))
-        self.image.fill(WHITE)
+        raw_image = pygame.image.load("Рус.png").convert_alpha()
+        self.image = pygame.transform.scale(raw_image, (50, 50))
         self.rect = self.image.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
         self.speed = 5
 
@@ -38,8 +38,8 @@ class Player(pygame.sprite.Sprite):
 class Enemy(pygame.sprite.Sprite):
     def __init__(self, speed_multiplier=1):
         super().__init__()
-        self.image = pygame.Surface((30, 30))
-        self.image.fill(RED)
+        raw_image = pygame.image.load("Ящер.png").convert_alpha()
+        self.image = pygame.transform.scale(raw_image, (45, 45))
         self.rect = self.image.get_rect(center=(random.randint(20, SCREEN_WIDTH - 20), -30))
         self.speed = random.randint(3, 6) * speed_multiplier
 
@@ -82,7 +82,6 @@ def show_menu():
 
 def main(level):
     global ENEMY_SPAWN_RATE
-    initial_enemy_spawn_rate = ENEMY_SPAWN_RATE
     player = Player()
     all_sprites = pygame.sprite.Group(player)
     enemies = pygame.sprite.Group()
@@ -93,11 +92,13 @@ def main(level):
 
     running = True
     while running:
+        screen.fill(WHITE)
         frame_count += 1
         time_count += 1
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return
+
 
         if time_count % (FPS * 5) == 0:
             ENEMY_SPAWN_RATE -= 1
@@ -109,12 +110,16 @@ def main(level):
             enemies.add(new_enemy)
             all_sprites.add(new_enemy)
 
+
+
         keys_pressed = pygame.key.get_pressed()
         all_sprites.update(keys_pressed)
 
         if pygame.sprite.spritecollide(player, enemies, True):
             lives -= 1
             if lives <= 0:
+                with open("scores.txt", "a") as file:
+                    file.write(f"Level: {level}, Score: {score}\n")
                 break
 
         if not pygame.sprite.spritecollide(player, enemies, False):
