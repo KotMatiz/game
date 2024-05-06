@@ -1,5 +1,6 @@
 import pygame
 import random
+import sys
 
 pygame.init()
 
@@ -35,30 +36,40 @@ class Player(pygame.sprite.Sprite):
         if keys_pressed[pygame.K_DOWN] and self.rect.bottom < SCREEN_HEIGHT:
             self.rect.y += self.speed
 
+
 class Enemy(pygame.sprite.Sprite):
-    def __init__(self, speed_multiplier=1):
+    def __init__(self, level):
         super().__init__()
         raw_image = pygame.image.load("Ящер.png").convert_alpha()
         self.image = pygame.transform.scale(raw_image, (45, 45))
-        self.rect = self.image.get_rect(center=(random.randint(20, SCREEN_WIDTH - 20), -30))
-        self.speed = random.randint(3, 6) * speed_multiplier
+
+        # Уровень 1: Враги появляются в верхней части экрана и двигаются вниз
+        # Уровень 2: Враги появляются справа экрана и двигаются налево
+        if level == 1:
+            self.rect = self.image.get_rect(center=(random.randint(20, SCREEN_WIDTH - 20), -30))
+            self.speed = random.randint(3, 6)
+        elif level == 2:
+            self.rect = self.image.get_rect(center=(SCREEN_WIDTH + 30, random.randint(20, SCREEN_HEIGHT - 20)))
+            self.speed = -random.randint(3, 6)
+
+    def update(self, *args):
+        if self.rect.x > 0:
+            self.rect.x -= self.speed
+        self.rect.y += self.speed
+        if self.rect.top > SCREEN_HEIGHT or self.rect.right < 0:
+            self.kill()
 
     def update(self, *args):
         self.rect.y += self.speed
         if self.rect.top > SCREEN_HEIGHT:
             self.kill()
-
 def show_menu():
     menu_font = pygame.font.Font(None, 48)
-    button_1 = menu_font.render('Уровень 1', True, WHITE)
-    button_2 = menu_font.render('Уровень 2', True, WHITE)
+    button_play = menu_font.render('Играть', True, WHITE)
     button_exit = menu_font.render('Выход', True, WHITE)
 
-    button_1_rect = button_1.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 3))
-    button_2_rect = button_2.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
+    button_play_rect = button_play.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 3))
     button_exit_rect = button_exit.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT * 2 // 3))
-
-    buttons = [(button_1, button_1_rect, 1), (button_2, button_2_rect, 2), (button_exit, button_exit_rect, 0)]
 
     while True:
         for event in pygame.event.get():
@@ -66,19 +77,16 @@ def show_menu():
                 return None
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 x, y = pygame.mouse.get_pos()
-                for button, rect, level in buttons:
-                    if rect.collidepoint(x, y):
-                        if level == 0:
-                            return None
-                        else:
-                            return level
+                if button_play_rect.collidepoint(x, y):
+                    return 1
+                elif button_exit_rect.collidepoint(x, y):
+                    sys.exit()
 
         screen.fill(BLACK)
-        for button, rect, _ in buttons:
-            screen.blit(button, rect)
+        screen.blit(button_play, button_play_rect)
+        screen.blit(button_exit, button_exit_rect)
         pygame.display.flip()
         clock.tick(FPS)
-
 
 def main(level):
     global ENEMY_SPAWN_RATE
@@ -99,18 +107,15 @@ def main(level):
             if event.type == pygame.QUIT:
                 return
 
-
         if time_count % (FPS * 5) == 0:
             ENEMY_SPAWN_RATE -= 1
             if ENEMY_SPAWN_RATE < 5:
                 ENEMY_SPAWN_RATE = 5
 
         if frame_count % ENEMY_SPAWN_RATE == 0:
-            new_enemy = Enemy(speed_multiplier=1.5 if level == 2 else 1)
+            new_enemy = Enemy(level)
             enemies.add(new_enemy)
             all_sprites.add(new_enemy)
-
-
 
         keys_pressed = pygame.key.get_pressed()
         all_sprites.update(keys_pressed)
@@ -125,16 +130,30 @@ def main(level):
         if not pygame.sprite.spritecollide(player, enemies, False):
             score += 1
 
+        # Проверяем, достигли ли мы 1000 очков и обновляем уровень
+        if score >= 1000 and level == 1:
+            level = 2
+            score = 0
+            lives = 3
+            # Убираем все существующие враги
+            enemies.empty()
+
+        # Проверяем, достигли ли мы 2000 очков на втором уровне и возвращаемся в меню
+        if score >= 2000 and level == 2:
+            return
+
         screen.fill(BLACK)
         all_sprites.draw(screen)
         font = pygame.font.Font(None, 36)
+        # Выводим текущий уровень
+        level_text = font.render(f"Level: {level}", True, WHITE)
+        screen.blit(level_text, (SCREEN_WIDTH - 150, 10))
         text = font.render(f"Score: {score} Lives: {lives}", True, WHITE)
         screen.blit(text, (10, 10))
         pygame.display.flip()
         clock.tick(FPS)
 
     return
-
 
 while True:
     selected_level = show_menu()
