@@ -1,5 +1,4 @@
 import pygame
-import sys
 import random
 
 pygame.init()
@@ -64,15 +63,15 @@ def show_menu():
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                return None  # Если пользователь закрыл окно, возвращаем None
+                return None
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 x, y = pygame.mouse.get_pos()
                 for button, rect, level in buttons:
                     if rect.collidepoint(x, y):
                         if level == 0:
-                            return None  # Если пользователь выбрал выход, возвращаем None
+                            return None
                         else:
-                            return level  # Возвращаем выбранный уровень
+                            return level
 
         screen.fill(BLACK)
         for button, rect, _ in buttons:
@@ -80,27 +79,31 @@ def show_menu():
         pygame.display.flip()
         clock.tick(FPS)
 
+
 def main(level):
     global ENEMY_SPAWN_RATE
-    if level == 1:
-        target_score = 500
-        ENEMY_SPAWN_RATE = 50
-    elif level == 2:
-        target_score = 1000
-        ENEMY_SPAWN_RATE = 25
-
+    initial_enemy_spawn_rate = ENEMY_SPAWN_RATE
     player = Player()
     all_sprites = pygame.sprite.Group(player)
     enemies = pygame.sprite.Group()
     score = 0
     frame_count = 0
+    time_count = 0
+    lives = 3
 
     running = True
     while running:
         frame_count += 1
+        time_count += 1
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                return  # Выход из функции и возвращение в главное меню
+                return
+
+        if time_count % (FPS * 5) == 0:
+            ENEMY_SPAWN_RATE -= 1
+            if ENEMY_SPAWN_RATE < 5:
+                ENEMY_SPAWN_RATE = 5
+
         if frame_count % ENEMY_SPAWN_RATE == 0:
             new_enemy = Enemy(speed_multiplier=1.5 if level == 2 else 1)
             enemies.add(new_enemy)
@@ -110,25 +113,26 @@ def main(level):
         all_sprites.update(keys_pressed)
 
         if pygame.sprite.spritecollide(player, enemies, True):
-            score -= 100
-        else:
-            score += 1
+            lives -= 1
+            if lives <= 0:
+                break
 
-        if score >= target_score:
-            break  # Достигнута целевая оценка, выход из цикла
+        if not pygame.sprite.spritecollide(player, enemies, False):
+            score += 1
 
         screen.fill(BLACK)
         all_sprites.draw(screen)
         font = pygame.font.Font(None, 36)
-        text = font.render(f"Score: {score}", True, WHITE)
+        text = font.render(f"Score: {score} Lives: {lives}", True, WHITE)
         screen.blit(text, (10, 10))
         pygame.display.flip()
         clock.tick(FPS)
 
-    return  # Возвращение в главное меню
+    return
+
 
 while True:
     selected_level = show_menu()
     if selected_level is None:
-        break  # Если функция show_menu вернула None, завершаем программу
+        break
     main(selected_level)
